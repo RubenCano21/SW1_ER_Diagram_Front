@@ -97,7 +97,7 @@ export default function Sidebar({
     >
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
-          {isOpen && <h2 className="text-lg font-semibold text-sidebar-foreground">Tools</h2>}
+          {isOpen && <h2 className="text-lg font-semibold text-sidebar-foreground">Herramientas</h2>}
           <Button
             variant="ghost"
             size="sm"
@@ -114,7 +114,7 @@ export default function Sidebar({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-foreground flex items-center gap-2">
                   <Database className="h-4 w-4" />
-                  Entities
+                  Tablas
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -130,14 +130,14 @@ export default function Sidebar({
                   }}
                 >
                   <Plus className="h-4 w-4" style={{ color: "#ffffff" }} />
-                  <span style={{ color: "#ffffff" }}>Add Entity</span>
+                  <span style={{ color: "#ffffff" }}>Agregar Tabla</span>
                 </button>
 
                 {entities.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs text-foreground flex items-center gap-1">
                       <Table className="h-3 w-3" />
-                      Entity List ({entities.length})
+                      Lista de Tablas ({entities.length})
                     </Label>
                     <div className="max-h-40 overflow-y-auto space-y-1">
                       {entities.map((entity) => (
@@ -188,7 +188,7 @@ export default function Sidebar({
                   <CardTitle className="text-sm text-foreground flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <GitBranch className="h-4 w-4" />
-                      Relationship Details
+                      Detalles de Relación
                     </span>
                     <Button
                       variant="ghost"
@@ -203,7 +203,7 @@ export default function Sidebar({
                 <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="relationship-type" className="text-xs text-foreground">
-                      Relationship Type
+                      Tipo de Relación
                     </Label>
                     <Select
                       value={selectedRelationship.type}
@@ -213,14 +213,14 @@ export default function Sidebar({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="association">Association</SelectItem>
-                        <SelectItem value="composition">Composition</SelectItem>
-                        <SelectItem value="aggregation">Aggregation</SelectItem>
-                        <SelectItem value="generalization">Generalization</SelectItem>
-                        <SelectItem value="dependency">Dependency</SelectItem>
-                        <SelectItem value="one-to-one">One to One</SelectItem>
-                        <SelectItem value="one-to-many">One to Many</SelectItem>
-                        <SelectItem value="many-to-many">Many to Many</SelectItem>
+                        <SelectItem value="association">Asociación</SelectItem>
+                        <SelectItem value="composition">Composición</SelectItem>
+                        <SelectItem value="aggregation">Aggregación</SelectItem>
+                        <SelectItem value="generalization">Generalización</SelectItem>
+                        <SelectItem value="dependency">Dependencia</SelectItem>
+                        <SelectItem value="one-to-one">Uno a Uno</SelectItem>
+                        <SelectItem value="one-to-many">Une a Muchos</SelectItem>
+                        <SelectItem value="many-to-many">Muchos a Muchos</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -242,7 +242,7 @@ export default function Sidebar({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label htmlFor="source-cardinality" className="text-xs text-foreground">
-                        Source Cardinality
+                        Cardinalidad Origen
                       </Label>
                       <Select
                         value={selectedRelationship.sourceCardinality || "1"}
@@ -266,7 +266,7 @@ export default function Sidebar({
 
                     <div>
                       <Label htmlFor="target-cardinality" className="text-xs text-foreground">
-                        Target Cardinality
+                        Cardinalidad Destino
                       </Label>
                       <Select
                         value={selectedRelationship.targetCardinality || "*"}
@@ -296,7 +296,7 @@ export default function Sidebar({
               <Card className="bg-card border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-foreground flex items-center justify-between">
-                    <span>Entity Details</span>
+                    <span>Detalle de Tabla</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -310,7 +310,7 @@ export default function Sidebar({
                 <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="entity-name" className="text-xs text-foreground">
-                      Entity Name
+                      Nombre de la Tabla
                     </Label>
                     <Input
                       id="entity-name"
@@ -325,7 +325,7 @@ export default function Sidebar({
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="text-xs text-foreground">Attributes</Label>
+                      <Label className="text-xs text-foreground">Atributos</Label>
                       <Button
                         onClick={() => onAddAttribute(selectedEntity.id)}
                         size="sm"
@@ -333,7 +333,7 @@ export default function Sidebar({
                         className="h-6 px-2 text-xs border-border text-foreground hover:bg-accent"
                       >
                         <Plus className="h-3 w-3 mr-1" />
-                        Add
+                        Agregar
                       </Button>
                     </div>
 
@@ -425,7 +425,7 @@ export default function Sidebar({
                                   onClick={() => setEditingAttribute(null)}
                                   className="h-6 px-2 text-xs high-contrast-button"
                                 >
-                                  Save
+                                  Guardar
                                 </Button>
                                 <Button
                                   size="sm"
@@ -433,7 +433,7 @@ export default function Sidebar({
                                   onClick={() => setEditingAttribute(null)}
                                   className="h-6 px-2 text-xs border-border"
                                 >
-                                  Cancel
+                                  Cancelar
                                 </Button>
                               </div>
                             </div>

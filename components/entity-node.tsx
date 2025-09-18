@@ -317,7 +317,7 @@ export default function EntityNode({ data, selected, id }: EntityNodeProps) {
                         })
                     ) : (
                         <div className="px-3 py-4 text-center text-gray-500 text-sm">
-                            No attributes defined
+                            No hay atributos definidos
                         </div>
                     )}
                 </div>

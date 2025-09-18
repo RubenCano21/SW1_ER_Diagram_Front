@@ -247,7 +247,7 @@ const ClassNode = memo(({ data, selected, id }: ClassNodeProps) => {
             {/* Attributes section */}
             <div className="p-3 border-b border-gray-200">
                 <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Attributes</h4>
+                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Atributos</h4>
                     <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleAddAttribute}>
                         <Plus className="h-3 w-3" />
                     </Button>
@@ -333,7 +333,7 @@ const ClassNode = memo(({ data, selected, id }: ClassNodeProps) => {
                             </div>
                         ))
                     ) : (
-                        <p className="text-xs text-gray-500 italic">No attributes</p>
+                        <p className="text-xs text-gray-500 italic">No hay atributos</p>
                     )}
                 </div>
             </div>

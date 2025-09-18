@@ -19,12 +19,13 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import {Badge} from "@/components/ui/badge"
-import {Database, Sparkles} from "lucide-react"
+import {Database, Download, Plus, Share2, Sparkles, Upload} from "lucide-react"
 import {useToast} from "@/hooks/use-toast"
 import EntityNode from "./entity-node"
 import RelationshipEdge from "./relationship-edge"
 import ClassNode from "./class-node"
 import Sidebar from "./sidebar"
+import {Button} from "@/components/ui/button";
 
 export interface Attribute {
   id: string
@@ -90,7 +91,7 @@ export default function ERDiagramTool() {
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [projectName, setProjectName] = useState("Untitled Project")
+  const [projectName, setProjectName] = useState("Nuevo Proyecto")
   const [isModified, setIsModified] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
@@ -141,8 +142,8 @@ export default function ERDiagramTool() {
     setTimeout(() => {
       setIsLoading(false)
       toast({
-        title: "✨ Project exported successfully",
-        description: `${projectName} has been saved to your downloads.`,
+        title: "✨ Proyecto exportado exitosamente",
+        description: `${projectName} Se ha guardado en tus descargas.`,
       })
     }, 500)
   }, [projectName, nodes, edges, toast])
@@ -164,11 +165,11 @@ export default function ERDiagramTool() {
           const projectData = JSON.parse(e.target?.result as string)
 
           if (!projectData.nodes || !projectData.edges) {
-            throw new Error("Invalid project format")
+            throw new Error("Formato de archivo no válido")
           }
 
           setTimeout(() => {
-            setProjectName(projectData.name || "Imported Project")
+            setProjectName(projectData.name || "Proyecto Importado")
             setNodes(projectData.nodes)
             setEdges(projectData.edges)
             setSelectedEntity(null)
@@ -177,15 +178,15 @@ export default function ERDiagramTool() {
             setIsLoading(false)
 
             toast({
-              title: "🎉 Project imported successfully",
-              description: `${projectData.name || "Project"} is now ready to edit.`,
+              title: "🎉 Proyecto importado exitosamente",
+              description: `${projectData.name || "Project"} listo para editar.`,
             })
           }, 300)
         } catch (error) {
           setIsLoading(false)
           toast({
-            title: "❌ Import failed",
-            description: "The file format is not valid or corrupted.",
+            title: "❌ Importación fallida",
+            description: "El formato del archivo no es válido o está dañado.",
             variant: "destructive",
           })
         }
@@ -198,14 +199,14 @@ export default function ERDiagramTool() {
 
   const createNewProject = useCallback(() => {
     if (isModified) {
-      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to create a new project?")
+      const confirmed = window.confirm("Tienes cambios sin guardar. ¿Estás seguro de que quieres crear un nuevo proyecto?")
       if (!confirmed) return
     }
 
     setIsLoading(true)
 
     setTimeout(() => {
-      setProjectName("Untitled Project")
+      setProjectName("Nuevo proyecto")
       setNodes([])
       setEdges([])
       setSelectedEntity(null)
@@ -214,8 +215,8 @@ export default function ERDiagramTool() {
       setIsLoading(false)
 
       toast({
-        title: "✨ New project created",
-        description: "Ready to design your data model.",
+        title: "✨ Nuevo proyecto creado",
+        description: "Listo para diseñar su modelo de datos.",
       })
     }, 200)
   }, [isModified, setNodes, setEdges, toast])
@@ -237,14 +238,14 @@ export default function ERDiagramTool() {
       .writeText(shareUrl)
       .then(() => {
         toast({
-          title: "🔗 Share link copied",
-          description: "Project link is ready to share with your team.",
+          title: "🔗 Compartir enlace copiado",
+          description: "El enlace del proyecto está listo para compartir con tu equipo.",
         })
       })
       .catch(() => {
         toast({
-          title: "🔗 Share link generated",
-          description: "Copy the URL from your browser to share this project.",
+          title: "🔗 Compartir enlace generado",
+          description: "Copia la URL de tu navegador para compartir este proyecto.",
         })
       })
   }, [projectName, nodes, edges, toast])
@@ -257,8 +258,8 @@ export default function ERDiagramTool() {
         type: "relationship",
         data: {
           id: `edge-${Date.now()}`,
-          type: "association",
-          label: "relates to",
+          type: "asociación",
+          label: "relaciona con",
           sourceCardinality: "1",
           targetCardinality: "*",
         },
@@ -369,7 +370,7 @@ export default function ERDiagramTool() {
       }
       setNodes((nds) => [...nds, newClass])
       toast({
-        title: "🎯 Class added",
+        title: "🎯 Nueva Clase",
         description: `New class with ${assignedColor} theme created.`,
       })
     } else {
@@ -554,38 +555,81 @@ export default function ERDiagramTool() {
                   <Database className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-semibold text-foreground tracking-tight">ER Diagram Tool</h1>
+                  <h1 className="text-xl font-semibold text-foreground tracking-tight">ER Diagrama</h1>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">{projectName}</span>
                     {isModified && <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />}
                   </div>
                 </div>
               </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={createNewProject}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-transform hover:scale-105 duration-200"
+                        style={{
+                            backgroundColor: "#1f2937",
+                            color: "#ffffff",
+                            border: "1px solid #374151",
+                            position: "relative",
+                            zIndex: 999,
+                        }}
+                    >
+                        <Plus className="h-4 w-4" style={{ color: "#ffffff" }} />
+                        <span style={{ color: "#ffffff" }}>New</span>
+                    </button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={importProject}
+                        className="high-contrast-secondary hover:scale-105 transition-transform duration-200 bg-transparent"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Import
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportProject}
+                        className="high-contrast-secondary hover:scale-105 transition-transform duration-200 bg-transparent"
+                    >
+                        <Download className="h-4 w-4" />
+                        Export
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={shareProject}
+                        className="high-contrast-secondary hover:scale-105 transition-transform duration-200 bg-transparent"
+                    >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                    </Button>
+                </div>
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Diagram:</span>
+                  <span className="text-sm text-muted-foreground">Diagrama:</span>
                   <select
                     value={diagramType}
                     onChange={(e) => setDiagramType(e.target.value as "er" | "class")}
                     className="text-sm bg-background border border-border rounded px-2 py-1 text-foreground"
                   >
-                    <option value="er">ER Diagram</option>
-                    <option value="class">Class Diagram</option>
+                    <option value="er">ER Diagrama</option>
+                    <option value="class">Diagrama de Clases</option>
                   </select>
                 </div>
 
                 {diagramType === "er" && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Model:</span>
+                    <span className="text-sm text-muted-foreground">Modelo:</span>
                     <select
                       value={modelType}
                       onChange={(e) => setModelType(e.target.value as "conceptual" | "logical" | "physical")}
                       className="text-sm bg-background border border-border rounded px-2 py-1 text-foreground"
                     >
                       <option value="conceptual">Conceptual</option>
-                      <option value="logical">Logical</option>
-                      <option value="physical">Physical</option>
+                      <option value="logical">Logico</option>
+                      <option value="physical">Fisico</option>
                     </select>
                   </div>
                 )}
@@ -602,7 +646,7 @@ export default function ERDiagramTool() {
                     variant="outline"
                     className="text-xs bg-card/50 text-foreground border-border hover:bg-accent/10 transition-colors"
                   >
-                    {edges.length} Relations
+                    {edges.length} Relaciones
                   </Badge>
                 </div>
               </div>

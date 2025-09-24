@@ -61,7 +61,7 @@ api.interceptors.response.use(
 // Servicios de API tipados
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
-    const response: AxiosResponse<ApiResponse<LoginResponse>> = await api.post('/auth/login', credentials);
+    const response: AxiosResponse<ApiResponse<LoginResponse>> = await api.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, credentials);
     return response.data.data || response.data;
   },
   

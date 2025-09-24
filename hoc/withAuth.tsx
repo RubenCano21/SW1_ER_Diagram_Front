@@ -67,7 +67,7 @@ const withAuth = <P extends WithAuthProps>(
 
       // Verificar roles si se especifican
       if (mounted && user && (requiredRole || requiredRoles)) {
-        const userRoles = user.roles || [];
+        const userRoles = user.roles?.map(role => role.name) || [];
         let hasRequiredRole = false;
 
         if (requiredRole) {
@@ -102,7 +102,7 @@ const withAuth = <P extends WithAuthProps>(
 
     // Si requiere roles específicos y no los tiene
     if (user && (requiredRole || requiredRoles)) {
-      const userRoles = user.roles || [];
+      const userRoles = user.roles?.map(role => role.name) || [];
       let hasRequiredRole = false;
 
       if (requiredRole) {
@@ -135,15 +135,17 @@ export const usePermissions = () => {
   const { user } = useAuth();
 
   const hasRole = (role: string): boolean => {
-    return user?.roles?.includes(role) || false;
+    return user?.roles?.some(r => r.name === role) || false;
   };
 
   const hasAnyRole = (roles: string[]): boolean => {
-    return roles.some(role => user?.roles?.includes(role)) || false;
+    const userRoles = user?.roles?.map(r => r.name) || [];
+    return roles.some(role => userRoles.includes(role));
   };
 
   const hasAllRoles = (roles: string[]): boolean => {
-    return roles.every(role => user?.roles?.includes(role)) || false;
+    const userRoles = user?.roles?.map(r => r.name) || [];
+    return roles.every(role => userRoles.includes(role));
   };
 
   return {

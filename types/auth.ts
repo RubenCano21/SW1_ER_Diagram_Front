@@ -1,16 +1,20 @@
 // types/auth.ts
 export interface User {
   id: number;
-  email: string;
-  name: string;
-  roles?: string[];
-  avatar?: string;
+  username: string;
+  roles?: Role[];
+  enabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
 
+export interface Role {
+  id: number;
+  name: string;
+}
+
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -25,7 +29,7 @@ export interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<LoginResult>;
+  login: (username: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   isAuthenticated: () => boolean;
   refreshToken?: () => Promise<void>;

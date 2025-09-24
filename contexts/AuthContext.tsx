@@ -56,11 +56,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<LoginResult> => {
+  const login = async (username: string, password: string): Promise<LoginResult> => {
     try {
       setLoading(true);
       
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ username, password });
       
       // Verificar que la respuesta tenga la estructura esperada
       if (!response.token || !response.user) {

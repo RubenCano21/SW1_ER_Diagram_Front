@@ -7,18 +7,18 @@ import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 interface FormData {
-  email: string;
+  username: string;
   password: string;
 }
 
 interface FormErrors {
-  email?: string;
+  username?: string;
   password?: string;
 }
 
 const LoginForm: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
-    email: '',
+    username: '',
     password: ''
   });
   
@@ -40,10 +40,10 @@ const LoginForm: React.FC = () => {
     const newErrors: FormErrors = {};
     
     // Validar email
-    if (!formData.email) {
-      newErrors.email = 'El email es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'El email no es válido';
+    if (!formData.username) {
+      newErrors.username = 'El email es requerido';
+    } else if (!/\S+@\S+\.\S+/.test(formData.username)) {
+      newErrors.username = 'El email no es válido';
     }
     
     // Validar contraseña
@@ -91,7 +91,7 @@ const LoginForm: React.FC = () => {
     setError('');
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.username, formData.password);
       
       if (result.success) {
         // Obtener redirect URL de los parámetros de búsqueda
@@ -151,22 +151,22 @@ const LoginForm: React.FC = () => {
                 Correo Electrónico
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 className={`w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                  errors.email 
+                  errors.username 
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
                     : 'border-gray-300'
                 }`}
                 placeholder="tu@email.com"
-                value={formData.email}
+                value={formData.username}
                 onChange={handleChange}
                 disabled={isLoading}
               />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              {errors.username && (
+                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
               )}
             </div>
 

@@ -25,7 +25,7 @@ export default function UnauthorizedPage() {
           </p>
           {user && (
             <p className="mt-2 text-xs text-gray-500">
-              Usuario actual: {user.email} | Roles: {user.roles?.join(', ') || 'Ninguno'}
+              Usuario actual: {user.username} | Roles: {user.roles?.map(r => r.name).join(', ') || 'Ninguno'}
             </p>
           )}
         </div>

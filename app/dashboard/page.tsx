@@ -49,13 +49,15 @@ function DashboardPage() {
                 <div className="flex-shrink-0">
                   <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
                     <span className="text-gray-600 text-sm font-medium">
-                      {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                      {user?.username?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
                 </div>
                 <div className="hidden md:block">
-                  <div className="text-sm font-medium text-gray-900">{user?.name || 'Usuario'}</div>
-                  <div className="text-sm text-gray-500">{user?.email}</div>
+                  <div className="text-sm font-medium text-gray-900">{user?.username || 'Usuario'}</div>
+                  <div className="text-sm text-gray-500">
+                    {user?.roles?.map(role => role.name).join(', ') || 'Sin roles'}
+                  </div>
                 </div>
               </div>
               
@@ -81,16 +83,16 @@ function DashboardPage() {
                   Dashboard
                 </h1>
                 <p className="mt-2 text-sm text-gray-600">
-                  Bienvenido de vuelta, {user?.name || user?.email}
+                  Bienvenido de vuelta, {user?.username}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
                 {user?.roles?.map((role) => (
                   <span
-                    key={role}
+                    key={role.id}
                     className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
                   >
-                    {role}
+                    {role.name}
                   </span>
                 ))}
               </div>
@@ -263,12 +265,8 @@ function DashboardPage() {
                 <div className="px-6 py-5">
                   <div className="space-y-4">
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Nombre</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{user?.name || 'No especificado'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Email</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{user?.email}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Usuario</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{user?.username}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Roles</dt>
@@ -276,10 +274,10 @@ function DashboardPage() {
                         <div className="flex flex-wrap gap-2">
                           {user?.roles?.map((role) => (
                             <span
-                              key={role}
+                              key={role.id}
                               className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
                             >
-                              {role}
+                              {role.name}
                             </span>
                           )) || (
                             <span className="text-sm text-gray-500">Sin roles asignados</span>

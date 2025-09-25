@@ -39,11 +39,11 @@ const LoginForm: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
     
-    // Validar email
+    // Validar usuario
     if (!formData.username) {
-      newErrors.username = 'El email es requerido';
+      newErrors.username = 'El usuario es requerido';
     } else if (!/\S+@\S+\.\S+/.test(formData.username)) {
-      newErrors.username = 'El email no es válido';
+      newErrors.username = 'El usuario no es válido';
     }
     
     // Validar contraseña

@@ -75,7 +75,7 @@ export const authService = {
   },
   
   getProfile: async (): Promise<User> => {
-    const response: AxiosResponse<ApiResponse<User>> = await api.get('/auth/me');
+    const response: AxiosResponse<ApiResponse<User>> = await api.get('/users/me');
     return response.data.data || response.data;
   },
 
@@ -122,5 +122,12 @@ export const userService = {
     await api.delete(`/users/${id}`);
   }
 };
+
+export const diagramService = {
+  get: async (): Promise<any> => {
+    const response: AxiosResponse<ApiResponse<any>> = await api.get('/projects');
+    return response.data.data || response.data;
+  }
+}
 
 export default api;

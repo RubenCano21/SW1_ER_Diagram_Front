@@ -32,7 +32,7 @@ function DashboardPage() {
                 <a href="#" className="text-indigo-600 border-b-2 border-indigo-500 px-1 pt-1 pb-4 text-sm font-medium">
                   Dashboard
                 </a>
-                <a href="#" className="text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 px-1 pt-1 pb-4 text-sm font-medium transition-colors">
+                <a href="/projects" className="text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 px-1 pt-1 pb-4 text-sm font-medium transition-colors">
                   Proyectos
                 </a>
                 {isAdmin && (
@@ -89,7 +89,7 @@ function DashboardPage() {
               <div className="flex items-center space-x-2">
                 {user?.roles?.map((role) => (
                   <span
-                    key={role.id}
+                    key={role.name}
                     className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
                   >
                     {role.name}
@@ -274,7 +274,7 @@ function DashboardPage() {
                         <div className="flex flex-wrap gap-2">
                           {user?.roles?.map((role) => (
                             <span
-                              key={role.id}
+                              key={role.name}
                               className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
                             >
                               {role.name}

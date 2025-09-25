@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, AuthContextType, LoginResult } from '@/types/auth';
+import { User, AuthContextType, LoginResult, Role } from '@/types/auth';
 import { authService } from '@/lib/api';
 import api from '@/lib/api';
 
@@ -61,13 +61,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       
       const response = await authService.login({ username, password });
+      console.log('login response:', response)
       
       // Verificar que la respuesta tenga la estructura esperada
-      if (!response.token || !response.user) {
+      if (!response.token || !response.username) {
         throw new Error('Respuesta del servidor inválida');
       }
 
-      const { token: newToken, user: userData } = response;
+      const newToken = response.token;
+
+      let roles : string[]  =[];
+
+      if (response.roles) {
+        if (typeof response.roles === 'string') {
+          roles = response.roles.replace(/[\[\]\s]/g, "").split(',');
+        } else {
+          roles = (response.roles as Role[]).map(r => r.name);
+        }
+      }
+
+      const userData: User = {
+        id: 0,
+        username: response.username,
+        roles: roles.map(r => ( { id: 0, name: r}))
+      };
       
       // Guardar token en localStorage
       localStorage.setItem('authToken', newToken);
@@ -123,15 +140,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.refreshToken(refreshTokenValue);
       
       // Actualizar tokens
-      localStorage.setItem('authToken', response.token);
+      if (response.token) {
+        localStorage.setItem('authToken', response.token);
+      }
       if (response.refreshToken) {
         localStorage.setItem('refreshToken', response.refreshToken);
       }
       
       // Configurar nuevo token
       api.defaults.headers.common['Authorization'] = `Bearer ${response.token}`;
-      setToken(response.token);
-      setUser(response.user);
+      setToken(response.token ?? null);
+      setUser(response.user ?? null);
       
     } catch (error) {
       console.error('Error al renovar token:', error);

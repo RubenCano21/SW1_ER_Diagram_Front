@@ -19,10 +19,24 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  token: string;
-  user: User;
+  // Diferentes posibles nombres para el token
+  token?: string;
+  accessToken?: string;
+  jwt?: string;
+  
+  // Datos del usuario (opcional, podría venir por separado)
+  user?: User;
+  
+  // Otros campos comunes en Spring Boot
   expiresIn?: number;
   refreshToken?: string;
+  tokenType?: string;
+  
+  // En caso de que la respuesta sea el usuario directamente
+  id?: number;
+  username?: string;
+  roles?: string | Role[];
+  enabled?: boolean;
 }
 
 export interface AuthContextType {

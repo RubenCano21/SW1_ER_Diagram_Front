@@ -575,7 +575,7 @@ export default function ERDiagramTool() {
                         }}
                     >
                         <Plus className="h-4 w-4" style={{ color: "#ffffff" }} />
-                        <span style={{ color: "#ffffff" }}>New</span>
+                        <span style={{ color: "#ffffff" }}>Nuevo</span>
                     </button>
                     <Button
                         variant="outline"

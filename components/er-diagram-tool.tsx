@@ -19,13 +19,31 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import {Badge} from "@/components/ui/badge"
-import {Database, Download, Plus, Share2, Sparkles, Upload} from "lucide-react"
+import {Database, Download, Plus, Share2, Sparkles, Upload, Save, FolderOpen, Code2, Settings} from "lucide-react"
 import {useToast} from "@/hooks/use-toast"
 import EntityNode from "./entity-node"
 import RelationshipEdge from "./relationship-edge"
 import ClassNode from "./class-node"
 import Sidebar from "./sidebar"
-import {Button} from "@/components/ui/button";
+import {Button} from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export interface Attribute {
   id: string
@@ -42,7 +60,7 @@ export interface EntityData {
   id: string
   name: string
   attributes: Attribute[]
-  color: string // Added color property to EntityData interface
+  color: string
 }
 
 export interface ClassData {
@@ -71,6 +89,13 @@ export interface RelationshipData {
   targetCardinality: string
 }
 
+// Configuración de persistencia local
+const STORAGE_KEYS = {
+  PROJECTS: 'erd_projects',
+  CURRENT_PROJECT: 'erd_current_project',
+  SETTINGS: 'erd_settings'
+}
+
 const entityColors = ["blue", "green", "purple", "orange", "red", "teal", "indigo", "pink"]
 
 const initialNodes: Node[] = []
@@ -78,7 +103,7 @@ const initialEdges: Edge[] = []
 
 const nodeTypes: NodeTypes = {
   entity: EntityNode,
-  class: ClassNode, // Added class node type
+  class: ClassNode,
 }
 
 const edgeTypes: EdgeTypes = {
@@ -97,7 +122,386 @@ export default function ERDiagramTool() {
   const { toast } = useToast()
 
   const [modelType, setModelType] = useState<"conceptual" | "logical" | "physical">("physical")
-  const [diagramType, setDiagramType] = useState<"er" | "class">("er") // Added diagram type state
+  const [diagramType, setDiagramType] = useState<"er" | "class">("er")
+
+  // Estados para manejo de proyectos
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
+  const [savedProjects, setSavedProjects] = useState<any[]>([])
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [showLoadDialog, setShowLoadDialog] = useState(false)
+  const [showCodeGenDialog, setShowCodeGenDialog] = useState(false)
+  const [saveAsName, setSaveAsName] = useState("")
+  const [projectToLoad, setProjectToLoad] = useState<string>("")
+
+  // Estados para generación de código
+  const [codeGenSettings, setCodeGenSettings] = useState({
+    projectName: "",
+    packageName: "com.example.project",
+    framework: "spring-boot",
+    javaVersion: "17"
+  })
+
+  // API Configuration
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+
+  // Cargar proyectos guardados al inicializar
+  useEffect(() => {
+    loadSavedProjects()
+    loadCurrentProject()
+  }, [])
+
+  // Auto-guardar cada 30 segundos si hay cambios
+  useEffect(() => {
+    if (isModified && currentProjectId) {
+      const autoSaveInterval = setInterval(() => {
+        autoSaveProject()
+      }, 30000) // 30 segundos
+
+      return () => clearInterval(autoSaveInterval)
+    }
+  }, [isModified, currentProjectId, nodes, edges, projectName])
+
+  const loadSavedProjects = () => {
+    try {
+      const projects = localStorage.getItem(STORAGE_KEYS.PROJECTS)
+      if (projects) {
+        setSavedProjects(JSON.parse(projects))
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error)
+    }
+  }
+
+  const loadCurrentProject = () => {
+    try {
+      const currentProject = localStorage.getItem(STORAGE_KEYS.CURRENT_PROJECT)
+      if (currentProject) {
+        const project = JSON.parse(currentProject)
+        setCurrentProjectId(project.id)
+        setProjectName(project.name)
+        setNodes(project.nodes || [])
+        setEdges(project.edges || [])
+        setModelType(project.modelType || "physical")
+        setDiagramType(project.diagramType || "er")
+        setIsModified(false)
+      }
+    } catch (error) {
+      console.error('Error loading current project:', error)
+    }
+  }
+
+  const autoSaveProject = useCallback(() => {
+    if (!currentProjectId || !isModified) return
+
+    const projectData = {
+      id: currentProjectId,
+      name: projectName,
+      modelType,
+      diagramType,
+      lastModified: new Date().toISOString(),
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+      })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type,
+        data: edge.data,
+      })),
+    }
+
+    try {
+      // Guardar proyecto actual
+      localStorage.setItem(STORAGE_KEYS.CURRENT_PROJECT, JSON.stringify(projectData))
+      
+      // Actualizar en la lista de proyectos
+      const projects = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS) || '[]')
+      const updatedProjects = projects.map((p: any) => 
+        p.id === currentProjectId ? projectData : p
+      )
+      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updatedProjects))
+      setSavedProjects(updatedProjects)
+      
+      setIsModified(false)
+      
+      toast({
+        title: "💾 Auto-guardado completado",
+        description: "El proyecto se guardó automáticamente",
+      })
+    } catch (error) {
+      console.error('Error auto-saving project:', error)
+    }
+  }, [currentProjectId, isModified, projectName, modelType, diagramType, nodes, edges, toast])
+
+  const saveProject = useCallback((name: string, saveAs: boolean = false) => {
+    const projectId = saveAs || !currentProjectId ? `project-${Date.now()}` : currentProjectId
+    const projectData = {
+      id: projectId,
+      name: name,
+      modelType,
+      diagramType,
+      createdAt: !currentProjectId ? new Date().toISOString() : undefined,
+      lastModified: new Date().toISOString(),
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+      })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type,
+        data: edge.data,
+      })),
+    }
+
+    try {
+      const projects = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS) || '[]')
+      let updatedProjects
+
+      if (saveAs || !currentProjectId) {
+        // Nuevo proyecto o guardar como
+        updatedProjects = [...projects, projectData]
+      } else {
+        // Actualizar proyecto existente
+        updatedProjects = projects.map((p: any) => p.id === projectId ? projectData : p)
+      }
+
+      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updatedProjects))
+      localStorage.setItem(STORAGE_KEYS.CURRENT_PROJECT, JSON.stringify(projectData))
+      
+      setSavedProjects(updatedProjects)
+      setCurrentProjectId(projectId)
+      setProjectName(name)
+      setIsModified(false)
+      setShowSaveDialog(false)
+
+      toast({
+        title: "💾 Proyecto guardado",
+        description: `"${name}" se guardó correctamente en el navegador`,
+      })
+    } catch (error) {
+      console.error('Error saving project:', error)
+      toast({
+        title: "❌ Error al guardar",
+        description: "No se pudo guardar el proyecto",
+        variant: "destructive",
+      })
+    }
+  }, [currentProjectId, projectName, modelType, diagramType, nodes, edges, toast])
+
+  const loadProject = useCallback((projectId: string) => {
+    try {
+      const projects = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS) || '[]')
+      const project = projects.find((p: any) => p.id === projectId)
+      
+      if (project) {
+        setCurrentProjectId(project.id)
+        setProjectName(project.name)
+        setNodes(project.nodes || [])
+        setEdges(project.edges || [])
+        setModelType(project.modelType || "physical")
+        setDiagramType(project.diagramType || "er")
+        setSelectedEntity(null)
+        setSelectedEdge(null)
+        setIsModified(false)
+        setShowLoadDialog(false)
+
+        // Guardar como proyecto actual
+        localStorage.setItem(STORAGE_KEYS.CURRENT_PROJECT, JSON.stringify(project))
+
+        toast({
+          title: "📂 Proyecto cargado",
+          description: `"${project.name}" se cargó correctamente`,
+        })
+      }
+    } catch (error) {
+      console.error('Error loading project:', error)
+      toast({
+        title: "❌ Error al cargar",
+        description: "No se pudo cargar el proyecto",
+        variant: "destructive",
+      })
+    }
+  }, [setNodes, setEdges, toast])
+
+  const deleteProject = useCallback((projectId: string) => {
+    try {
+      const projects = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS) || '[]')
+      const updatedProjects = projects.filter((p: any) => p.id !== projectId)
+      
+      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updatedProjects))
+      setSavedProjects(updatedProjects)
+
+      if (currentProjectId === projectId) {
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_PROJECT)
+        createNewProject()
+      }
+
+      toast({
+        title: "🗑️ Proyecto eliminado",
+        description: "El proyecto se eliminó correctamente",
+      })
+    } catch (error) {
+      console.error('Error deleting project:', error)
+    }
+  }, [currentProjectId])
+
+  // Función para generar código Java
+  const generateJavaCode = useCallback(async () => {
+    if (nodes.length === 0) {
+      toast({
+        title: "❌ Sin entidades",
+        description: "Necesitas al menos una entidad para generar código",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Preparar datos para el backend
+      const erdJson = {
+        projectName: codeGenSettings.projectName || projectName,
+        packageName: codeGenSettings.packageName,
+        framework: codeGenSettings.framework,
+        javaVersion: codeGenSettings.javaVersion,
+        entities: nodes.map(node => {
+          const entityData = node.data as unknown as EntityData
+          return {
+            name: entityData.name,
+            attributes: entityData.attributes.map(attr => ({
+              name: attr.name,
+              type: mapDataTypeToJava(attr.type),
+              primary: attr.isPrimaryKey,
+              foreignKey: attr.isForeignKey ? `${attr.name.replace('_id', '').replace('Id', '')}.id` : null,
+              nullable: !attr.isRequired,
+              unique: attr.name === 'email' || attr.name.toLowerCase().includes('email')
+            }))
+          }
+        }),
+        relationships: edges.map(edge => {
+          const relationshipData = edge.data as unknown as RelationshipData
+          const sourceNode = nodes.find(n => n.id === edge.source)
+          const targetNode = nodes.find(n => n.id === edge.target)
+          
+          return {
+            from: (sourceNode?.data as unknown as EntityData)?.name,
+            to: (targetNode?.data as unknown as EntityData)?.name,
+            type: mapRelationshipType(relationshipData.type),
+            sourceCardinality: relationshipData.sourceCardinality,
+            targetCardinality: relationshipData.targetCardinality
+          }
+        })
+      }
+
+      const requestPayload = {
+        erdJson: JSON.stringify(erdJson),
+        projectName: codeGenSettings.projectName || projectName
+      }
+      // Llamar al backend
+      const response = await fetch(`${API_BASE_URL}/generator/v1`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          erdJson: JSON.stringify(erdJson),
+          projectName: codeGenSettings.projectName || projectName
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      // Obtener el archivo ZIP
+      const blob = await response.blob()
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = `${codeGenSettings.projectName || projectName}.zip`
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+
+      // Descargar el archivo
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      setShowCodeGenDialog(false)
+      setIsLoading(false)
+
+      toast({
+        title: "🚀 Código generado exitosamente",
+        description: `Proyecto "${filename}" descargado en tu carpeta de Descargas`,
+      })
+
+    } catch (error) {
+      setIsLoading(false)
+      console.error('Error generating code:', error)
+      
+      let errorMessage = 'Error desconocido al generar el código'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('400')) {
+          errorMessage = 'Datos del diagrama inválidos. Revisa las entidades y relaciones.'
+        } else if (error.message.includes('500')) {
+          errorMessage = 'Error interno del servidor. Intenta nuevamente.'
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast({
+        title: "❌ Error al generar código",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
+  }, [nodes, edges, projectName, codeGenSettings, API_BASE_URL, toast])
+
+  // Funciones auxiliares para mapear tipos de datos
+  const mapDataTypeToJava = (type: string) => {
+    const typeMap: { [key: string]: string } = {
+      'INTEGER': 'Long',
+      'VARCHAR': 'String',
+      'TEXT': 'String',
+      'BOOLEAN': 'Boolean',
+      'DATE': 'LocalDate',
+      'DATETIME': 'LocalDateTime',
+      'DECIMAL': 'BigDecimal',
+      'FLOAT': 'Double'
+    }
+    return typeMap[type.toUpperCase()] || 'String'
+  }
+
+  const mapRelationshipType = (type: string) => {
+    const relationMap: { [key: string]: string } = {
+      'uno a uno': 'OneToOne',
+      'uno a muchos': 'OneToMany',
+      'muchos a uno': 'ManyToOne',
+      'muchos a muchos': 'ManyToMany'
+    }
+    return relationMap[type.toLowerCase()] || 'OneToMany'
+  }
 
   useEffect(() => {
     setIsLoading(true)
@@ -106,8 +510,6 @@ export default function ERDiagramTool() {
   }, [])
 
   const exportProject = useCallback(() => {
-    setIsLoading(true)
-
     const projectData = {
       name: projectName,
       version: "1.0",
@@ -139,13 +541,10 @@ export default function ERDiagramTool() {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
 
-    setTimeout(() => {
-      setIsLoading(false)
-      toast({
-        title: "✨ Proyecto exportado exitosamente",
-        description: `${projectName} Se ha guardado en tus descargas.`,
-      })
-    }, 500)
+    toast({
+      title: "✨ Proyecto exportado",
+      description: `${projectName} se guardó como archivo JSON`,
+    })
   }, [projectName, nodes, edges, toast])
 
   const importProject = useCallback(() => {
@@ -174,19 +573,20 @@ export default function ERDiagramTool() {
             setEdges(projectData.edges)
             setSelectedEntity(null)
             setSelectedEdge(null)
-            setIsModified(false)
+            setIsModified(true)
+            setCurrentProjectId(null)
             setIsLoading(false)
 
             toast({
-              title: "🎉 Proyecto importado exitosamente",
-              description: `${projectData.name || "Project"} listo para editar.`,
+              title: "🎉 Proyecto importado",
+              description: `${projectData.name || "Project"} listo para editar`,
             })
           }, 300)
         } catch (error) {
           setIsLoading(false)
           toast({
             title: "❌ Importación fallida",
-            description: "El formato del archivo no es válido o está dañado.",
+            description: "El formato del archivo no es válido",
             variant: "destructive",
           })
         }
@@ -199,7 +599,7 @@ export default function ERDiagramTool() {
 
   const createNewProject = useCallback(() => {
     if (isModified) {
-      const confirmed = window.confirm("Tienes cambios sin guardar. ¿Estás seguro de que quieres crear un nuevo proyecto?")
+      const confirmed = window.confirm("Tienes cambios sin guardar. ¿Quieres crear un nuevo proyecto?")
       if (!confirmed) return
     }
 
@@ -212,11 +612,13 @@ export default function ERDiagramTool() {
       setSelectedEntity(null)
       setSelectedEdge(null)
       setIsModified(false)
+      setCurrentProjectId(null)
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_PROJECT)
       setIsLoading(false)
 
       toast({
         title: "✨ Nuevo proyecto creado",
-        description: "Listo para diseñar su modelo de datos.",
+        description: "Listo para diseñar tu modelo de datos",
       })
     }, 200)
   }, [isModified, setNodes, setEdges, toast])
@@ -238,14 +640,14 @@ export default function ERDiagramTool() {
       .writeText(shareUrl)
       .then(() => {
         toast({
-          title: "🔗 Compartir enlace copiado",
-          description: "El enlace del proyecto está listo para compartir con tu equipo.",
+          title: "🔗 Enlace copiado",
+          description: "El enlace del proyecto está listo para compartir",
         })
       })
       .catch(() => {
         toast({
-          title: "🔗 Compartir enlace generado",
-          description: "Copia la URL de tu navegador para compartir este proyecto.",
+          title: "🔗 Enlace generado",
+          description: "Copia la URL de tu navegador para compartir",
         })
       })
   }, [projectName, nodes, edges, toast])
@@ -272,10 +674,10 @@ export default function ERDiagramTool() {
 
   const checkCollision = useCallback(
     (newPosition: { x: number; y: number }, nodeId: string, nodeWidth = 250, nodeHeight = 200) => {
-      const buffer = 20 // Minimum distance between nodes
+      const buffer = 20
 
       return nodes.some((node) => {
-        if (node.id === nodeId) return false // Don't check collision with itself
+        if (node.id === nodeId) return false
 
         const nodePos = node.position
         const distance = Math.sqrt(Math.pow(newPosition.x - nodePos.x, 2) + Math.pow(newPosition.y - nodePos.y, 2))
@@ -293,7 +695,6 @@ export default function ERDiagramTool() {
       const maxAttempts = 50
 
       while (checkCollision(position, nodeId) && attempts < maxAttempts) {
-        // Try positions in a spiral pattern
         const angle = attempts * 0.5 * Math.PI
         const radius = 50 + attempts * 10
         position = {
@@ -312,7 +713,6 @@ export default function ERDiagramTool() {
     (changes: any[]) => {
       const modifiedChanges = changes.map((change) => {
         if (change.type === "position" && change.position && change.dragging === false) {
-          // When node is dropped, check for collision and adjust position if needed
           const nonCollidingPosition = findNonCollidingPosition(change.position, change.id)
           return {
             ...change,
@@ -371,7 +771,7 @@ export default function ERDiagramTool() {
       setNodes((nds) => [...nds, newClass])
       toast({
         title: "🎯 Nueva Clase",
-        description: `New class with ${assignedColor} theme created.`,
+        description: `Nueva clase con tema ${assignedColor} creada`,
       })
     } else {
       const newEntity: Node = {
@@ -396,8 +796,8 @@ export default function ERDiagramTool() {
       }
       setNodes((nds) => [...nds, newEntity])
       toast({
-        title: "🎯 Entity added",
-        description: `New entity with ${assignedColor} theme created.`,
+        title: "🎯 Entidad agregada",
+        description: `Nueva entidad con tema ${assignedColor} creada`,
       })
     }
     setIsModified(true)
@@ -425,35 +825,35 @@ export default function ERDiagramTool() {
     [setNodes, setEdges, selectedEntity],
   )
 
-    const addAttribute = useCallback(
-        (entityId: string) => {
-            const newAttribute: Attribute = {
-                id: `attr-${Date.now()}`,
-                name: "new_attribute",
-                type: "VARCHAR(255)",
-                isPrimaryKey: false,
-                isForeignKey: false,
-                isRequired: false,
-            }
+  const addAttribute = useCallback(
+    (entityId: string) => {
+      const newAttribute: Attribute = {
+        id: `attr-${Date.now()}`,
+        name: "new_attribute",
+        type: "VARCHAR(255)",
+        isPrimaryKey: false,
+        isForeignKey: false,
+        isRequired: false,
+      }
 
-            const node = nodes.find((n) => n.id === entityId)
-            if (!node) return
+      const node = nodes.find((n) => n.id === entityId)
+      if (!node) return
 
-            const currentAttributes = ((node.data as unknown as EntityData)?.attributes ?? []) as Attribute[]
+      const currentAttributes = ((node.data as unknown as EntityData)?.attributes ?? []) as Attribute[]
 
-            updateEntity(entityId, {
-                attributes: [...currentAttributes, newAttribute],
-            })
-        },
-        [nodes, updateEntity],
-    )
+      updateEntity(entityId, {
+        attributes: [...currentAttributes, newAttribute],
+      })
+    },
+    [nodes, updateEntity],
+  )
 
   const updateAttribute = useCallback(
     (entityId: string, attributeId: string, updatedAttribute: Partial<Attribute>) => {
       const entity = nodes.find((n) => n.id === entityId)
       if (!entity) return
 
-        const updatedAttributes = (entity.data as unknown as EntityData).attributes.map((attr: Attribute) =>
+      const updatedAttributes = (entity.data as unknown as EntityData).attributes.map((attr: Attribute) =>
         attr.id === attributeId ? { ...attr, ...updatedAttribute } : attr,
       )
 
@@ -467,7 +867,7 @@ export default function ERDiagramTool() {
       const entity = nodes.find((n) => n.id === entityId)
       if (!entity) return
 
-        const updatedAttributes = (entity.data as unknown as EntityData).attributes.filter((attr: Attribute) => attr.id !== attributeId)
+      const updatedAttributes = (entity.data as unknown as EntityData).attributes.filter((attr: Attribute) => attr.id !== attributeId)
 
       updateEntity(entityId, { attributes: updatedAttributes })
     },
@@ -511,10 +911,205 @@ export default function ERDiagramTool() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-6 py-4 shadow-lg">
             <Sparkles className="h-5 w-5 text-accent animate-spin" />
-            <span className="text-sm font-medium text-foreground">Processing...</span>
+            <span className="text-sm font-medium text-foreground">Procesando...</span>
           </div>
         </div>
       )}
+
+      {/* Dialog para guardar proyecto */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Guardar Proyecto</DialogTitle>
+            <DialogDescription>
+              Ingresa un nombre para guardar tu proyecto localmente
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="projectName">Nombre del proyecto</Label>
+              <Input
+                id="projectName"
+                value={saveAsName || projectName}
+                onChange={(e) => setSaveAsName(e.target.value)}
+                placeholder="Mi Proyecto ER"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => saveProject(saveAsName || projectName, !!saveAsName)}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para cargar proyecto */}
+      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cargar Proyecto</DialogTitle>
+            <DialogDescription>
+              Selecciona un proyecto guardado para continuar trabajando
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {savedProjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No hay proyectos guardados
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {savedProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      projectToLoad === project.id
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => setProjectToLoad(project.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium">{project.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {project.nodes?.length || 0} entidades • {project.edges?.length || 0} relaciones
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {project.lastModified ? 
+                            `Modificado: ${new Date(project.lastModified).toLocaleDateString()}` :
+                            `Creado: ${new Date(project.createdAt).toLocaleDateString()}`
+                          }
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (confirm(`¿Eliminar el proyecto "${project.name}"?`)) {
+                            deleteProject(project.id)
+                          }
+                        }}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        🗑️
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLoadDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => loadProject(projectToLoad)} 
+              disabled={!projectToLoad}
+            >
+              Cargar Proyecto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para generación de código */}
+      <Dialog open={showCodeGenDialog} onOpenChange={setShowCodeGenDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generar Código Java</DialogTitle>
+            <DialogDescription>
+              Configura los parámetros para generar tu proyecto Spring Boot
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="codeProjectName">Nombre del proyecto</Label>
+              <Input
+                id="codeProjectName"
+                value={codeGenSettings.projectName || projectName}
+                onChange={(e) => setCodeGenSettings(prev => ({...prev, projectName: e.target.value}))}
+                placeholder="mi-proyecto-spring"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="packageName">Nombre del paquete</Label>
+              <Input
+                id="packageName"
+                value={codeGenSettings.packageName}
+                onChange={(e) => setCodeGenSettings(prev => ({...prev, packageName: e.target.value}))}
+                placeholder="com.example.project"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="framework">Framework</Label>
+              <Select 
+                value={codeGenSettings.framework} 
+                onValueChange={(value) => setCodeGenSettings(prev => ({...prev, framework: value}))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="spring-boot">Spring Boot</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="javaVersion">Versión de Java</Label>
+              <Select 
+                value={codeGenSettings.javaVersion} 
+                onValueChange={(value) => setCodeGenSettings(prev => ({...prev, javaVersion: value}))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="11">Java 11</SelectItem>
+                  <SelectItem value="17">Java 17</SelectItem>
+                  <SelectItem value="21">Java 21</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm font-medium mb-2">Se generarán:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• {nodes.length} Entidades con JPA</li>
+                <li>• {nodes.length} DTOs</li>
+                <li>• {nodes.length} Repositorios</li>
+                <li>• {nodes.length} Servicios</li>
+                <li>• {nodes.length} Controladores REST</li>
+                <li>• Mappers con MapStruct</li>
+                <li>• Configuración completa del proyecto</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCodeGenDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={generateJavaCode} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                  Generando...
+                </>
+              ) : (
+                <>
+                  <Code2 className="h-4 w-4 mr-2" />
+                  Generar Código
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Sidebar
         isOpen={isSidebarOpen}
@@ -529,18 +1124,13 @@ export default function ERDiagramTool() {
         onDeleteAttribute={deleteAttribute}
         onDeleteEntity={deleteEntity}
         onDeleteRelationship={deleteRelationship}
-        entities={nodes.map((node) => node.data as unknown as EntityData).filter((data) => data.name)} // Extract entity data from nodes// Extract entity data from nodes
+        entities={nodes.map((node) => node.data as unknown as EntityData).filter((data) => data.name)}
         onSelectEntity={(entityId: string) => {
           setSelectedEntity(entityId)
           setSelectedEdge(null)
           const selectedNode = nodes.find((node) => node.id === entityId)
           if (selectedNode) {
-            // Focus on the selected node by updating the viewport
-            const reactFlowInstance = document.querySelector(".react-flow")
-            if (reactFlowInstance) {
-              // Trigger a gentle animation to the selected node
-              console.log("[v0] Focusing on entity:", selectedNode.data.name)
-            }
+            console.log("[v0] Focusing on entity:", selectedNode.data.name)
           }
         }}
         selectedEntityId={selectedEntity}
@@ -559,52 +1149,92 @@ export default function ERDiagramTool() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">{projectName}</span>
                     {isModified && <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />}
+                    {currentProjectId && <span className="text-xs text-muted-foreground">• Guardado</span>}
                   </div>
                 </div>
               </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={createNewProject}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-transform hover:scale-105 duration-200"
-                        style={{
-                            backgroundColor: "#1f2937",
-                            color: "#ffffff",
-                            border: "1px solid #374151",
-                            position: "relative",
-                            zIndex: 999,
-                        }}
-                    >
-                        <Plus className="h-4 w-4" style={{ color: "#ffffff" }} />
-                        <span style={{ color: "#ffffff" }}>Nuevo</span>
-                    </button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={importProject}
-                        className="high-contrast-secondary hover:scale-105 transition-transform duration-200 bg-transparent"
-                    >
-                        <Upload className="h-4 w-4" />
-                        Import
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={exportProject}
-                        className="high-contrast-secondary hover:scale-105 transition-transform duration-200 bg-transparent"
-                    >
-                        <Download className="h-4 w-4" />
-                        Export
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={shareProject}
-                        className="high-contrast-secondary hover:scale-105 transition-transform duration-200 bg-transparent"
-                    >
-                        <Share2 className="h-4 w-4" />
-                        Share
-                    </Button>
-                </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={createNewProject}
+                  className="hover:scale-105 transition-transform duration-200"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSaveAsName("")
+                    setShowSaveDialog(true)
+                  }}
+                  className="hover:scale-105 transition-transform duration-200"
+                >
+                  <Save className="h-4 w-4" />
+                  Guardar
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLoadDialog(true)}
+                  className="hover:scale-105 transition-transform duration-200"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  Cargar
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={importProject}
+                  className="hover:scale-105 transition-transform duration-200"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportProject}
+                  className="hover:scale-105 transition-transform duration-200"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCodeGenSettings(prev => ({
+                      ...prev,
+                      projectName: projectName
+                    }))
+                    setShowCodeGenDialog(true)
+                  }}
+                  className="hover:scale-105 transition-transform duration-200 bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-none"
+                  disabled={nodes.length === 0}
+                >
+                  <Code2 className="h-4 w-4" />
+                  Generar Java
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={shareProject}
+                  className="hover:scale-105 transition-transform duration-200"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              </div>
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -628,8 +1258,8 @@ export default function ERDiagramTool() {
                       className="text-sm bg-background border border-border rounded px-2 py-1 text-foreground"
                     >
                       <option value="conceptual">Conceptual</option>
-                      <option value="logical">Logico</option>
-                      <option value="physical">Fisico</option>
+                      <option value="logical">Lógico</option>
+                      <option value="physical">Físico</option>
                     </select>
                   </div>
                 )}
@@ -639,8 +1269,7 @@ export default function ERDiagramTool() {
                     variant="outline"
                     className="text-xs bg-card/50 text-foreground border-border hover:bg-accent/10 transition-colors"
                   >
-                    {nodes.length} {diagramType === "class" ? "Classes" : "Entities"}{" "}
-                    {/* Dynamic label based on diagram type */}
+                    {nodes.length} {diagramType === "class" ? "Classes" : "Entities"}
                   </Badge>
                   <Badge
                     variant="outline"
@@ -698,7 +1327,7 @@ export default function ERDiagramTool() {
             panOnDrag={[1, 2]}
             selectNodesOnDrag={false}
           >
-              <Background color="var(--muted-foreground)" gap={20} size={1} variant={"dots" as BackgroundVariant} />
+            <Background color="var(--muted-foreground)" gap={20} size={1} variant={"dots" as BackgroundVariant} />
             <Controls className="bg-card/90 backdrop-blur-sm border-border shadow-lg" />
             <MiniMap
               className="bg-card/90 backdrop-blur-sm border-border shadow-lg"

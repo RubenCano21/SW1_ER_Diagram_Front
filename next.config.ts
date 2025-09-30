@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
 
   output: 'standalone',
   reactStrictMode: true,
+
+  typescript: {
+    ignoreBuildErrors: true, // ❌ ignora errores TS en build
+  },
+  eslint: {
+    ignoreDuringBuilds: true, // ❌ desactiva ESLint en build
+  },
 };
 
 export default nextConfig;

@@ -1,6 +1,9 @@
 // hoc/withAuth.tsx
 'use client'
 
+import { Suspense } from "react";
+
+
 import React, { useEffect, useState, ComponentType } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,13 +41,22 @@ const withAuth = <P extends WithAuthProps>(
   options: WithAuthOptions = {}
 ) => {
   const { redirectTo = '/login', requiredRole, requiredRoles } = options;
-  
+
   const ProtectedRoute: React.FC<P> = (props) => {
+    return (
+      <Suspense fallback={<div>Cargando autenticación...</div>}>
+        <InnerProtectedRoute {...props} />
+      </Suspense>
+    );
+  };
+
+  // extraemos la lógica a un componente interno
+  const InnerProtectedRoute: React.FC<P> = (props) => {
     const { user, loading, isAuthenticated } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [mounted, setMounted] = useState<boolean>(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
       setMounted(true);
@@ -52,81 +64,42 @@ const withAuth = <P extends WithAuthProps>(
 
     useEffect(() => {
       if (!mounted) return;
-      
       if (!loading && !isAuthenticated()) {
-        // Construir la URL actual con query parameters
-        const currentUrl = searchParams.toString() 
-          ? `${pathname}?${searchParams.toString()}` 
+        const currentUrl = searchParams.toString()
+          ? `${pathname}?${searchParams.toString()}`
           : pathname;
-        
-        // Redirigir al login con la URL actual
         const loginUrl = `${redirectTo}?redirect=${encodeURIComponent(currentUrl)}`;
         router.replace(loginUrl);
         return;
       }
 
-      // Verificar roles si se especifican
       if (mounted && user && (requiredRole || requiredRoles)) {
-        const userRoles = user.roles?.map(role => role.name) || [];
+        const userRoles = user.roles?.map(r => r.name) || [];
         let hasRequiredRole = false;
 
         if (requiredRole) {
           hasRequiredRole = userRoles.includes(requiredRole);
         }
-
         if (requiredRoles && requiredRoles.length > 0) {
           hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
         }
 
         if (!hasRequiredRole) {
           router.replace('/unauthorized');
-          return;
         }
       }
     }, [loading, user, isAuthenticated, router, pathname, searchParams, mounted]);
 
-    // No renderizar nada hasta que esté montado
-    if (!mounted) {
-      return null;
-    }
+    if (!mounted || loading) return <LoadingSpinner />;
+    if (!isAuthenticated()) return <LoadingSpinner />;
 
-    // Mostrar spinner mientras se verifica la autenticación
-    if (loading) {
-      return <LoadingSpinner />;
-    }
-
-    // Si no está autenticado, no renderizar nada (la redirección se maneja en useEffect)
-    if (!isAuthenticated()) {
-      return <LoadingSpinner />;
-    }
-
-    // Si requiere roles específicos y no los tiene
-    if (user && (requiredRole || requiredRoles)) {
-      const userRoles = user.roles?.map(role => role.name) || [];
-      let hasRequiredRole = false;
-
-      if (requiredRole) {
-        hasRequiredRole = userRoles.includes(requiredRole);
-      }
-
-      if (requiredRoles && requiredRoles.length > 0) {
-        hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
-      }
-
-      if (!hasRequiredRole) {
-        return <LoadingSpinner />;
-      }
-    }
-
-    // Si todo está bien, renderizar el componente
     return <WrappedComponent {...props} />;
   };
 
-  // Mantener el nombre del componente para debugging
   ProtectedRoute.displayName = `withAuth(${WrappedComponent.displayName || WrappedComponent.name})`;
-
   return ProtectedRoute;
 };
+
 
 export default withAuth;
 

@@ -1,6 +1,8 @@
 // app/dashboard/page.tsx
 'use client'
 
+export const dynamic = "force-dynamic";
+
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hoc/withAuth';
 import withAuth from '@/hoc/withAuth';

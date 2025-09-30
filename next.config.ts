@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL
   },
 
-  output: 'standalone',
+  output: 'export',
   reactStrictMode: true,
 
   typescript: {

@@ -5,14 +5,14 @@ import './globals.css'
 
 const inter = localFont({
   src: [
-    { path: './public/fonts/Inter-Regular.woff2', weight: '400', style: 'normal' },
-    { path: './public/fonts/Inter-Bold.woff2', weight: '700', style: 'normal' }
+    { path: './fonts/Inter-Regular.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/Inter-Bold.woff2', weight: '700', style: 'normal' }
   ],
   variable: '--font-inter'
 })
 
 export const metadata = {
-  title: 'ER Diragram',
+  title: 'ER Diagram',
   description: 'Aplicación con autenticación JWT usando Next.js 13+ y Spring Boot',
 }
 

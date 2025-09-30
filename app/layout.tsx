@@ -6,7 +6,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Mi App - Autenticación JWT',
+  title: 'ER Diragram',
   description: 'Aplicación con autenticación JWT usando Next.js 13+ y Spring Boot',
 }
 

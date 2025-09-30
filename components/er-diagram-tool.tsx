@@ -46,6 +46,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+import AIAssistant from "./AIAssistant"
+import { logger } from '@/lib/logger'
+
 export interface Attribute {
   id: string
   name: string
@@ -234,7 +237,7 @@ export default function ERDiagramTool() {
         description: "El proyecto se guardó automáticamente",
       })
     } catch (error) {
-      console.error('Error auto-saving project:', error)
+      logger.error('Error auto-saving project:', error)
     }
   }, [currentProjectId, isModified, projectName, modelType, diagramType, nodes, edges, toast])
 
@@ -353,6 +356,47 @@ export default function ERDiagramTool() {
       console.error('Error deleting project:', error)
     }
   }, [currentProjectId])
+
+  // IA assistant integration
+  const applySuggestion = useCallback((suggestion: any) => {
+  // Encontrar las entidades por nombre
+  const sourceNode = nodes.find(n => (n.data as unknown as EntityData).name === suggestion.fromEntity)
+  const targetNode = nodes.find(n => (n.data as unknown as EntityData).name === suggestion.toEntity)
+
+  if (!sourceNode || !targetNode) {
+    toast({
+      title: "Error",
+      description: "No se pudieron encontrar las entidades",
+      variant: "destructive"
+    })
+    return
+  }
+
+  // Mapear cardinalidad al formato de tu sistema
+  const [sourceCard, targetCard] = suggestion.cardinality.split(':')
+  
+  const newEdge: Edge = {
+    id: `edge-${Date.now()}`,
+    source: sourceNode.id,
+    target: targetNode.id,
+    type: "relationship",
+    data: {
+      id: `edge-${Date.now()}`,
+      type: "asociación",
+      label: "relaciona con",
+      sourceCardinality: sourceCard || "1",
+      targetCardinality: targetCard || "*",
+    },
+  }
+
+  setEdges((eds) => [...eds, newEdge])
+  setIsModified(true)
+  
+  toast({
+    title: "✅ Relación agregada",
+    description: `${suggestion.fromEntity} → ${suggestion.toEntity}`,
+  })
+}, [nodes, setEdges, toast])
 
   // Función para generar código Java
   const generateJavaCode = useCallback(async () => {
@@ -1352,6 +1396,17 @@ export default function ERDiagramTool() {
           </ReactFlow>
         </div>
       </div>
+      {/* Asistente de IA */}
+      <AIAssistant
+        entities={nodes.map(node => node.data as unknown as EntityData)}
+        relationships={edges.map(edge => ({
+          source: edge.source,
+          target: edge.target,
+          data: edge.data as any
+        }))}
+        onApplySuggestion={applySuggestion}
+        apiBaseUrl={API_BASE_URL}
+      />
     </div>
   )
 }
